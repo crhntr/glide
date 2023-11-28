@@ -102,10 +102,6 @@ type Team struct {
 	Name string `json:"name"`
 }
 
-func (client *Client) Teams(ctx context.Context) ([]Team, error) {
-	return listResource[Team](ctx, client, "teams")
-}
-
 type Pipeline struct {
 	ID          int    `json:"id"`
 	Name        string `json:"name"`
@@ -120,8 +116,30 @@ func (pipeline Pipeline) LastUpdatedTime() time.Time {
 	return time.Unix(pipeline.LastUpdated, 0)
 }
 
-func (client *Client) Pipelines(ctx context.Context, team string) ([]Pipeline, error) {
-	return listResource[Pipeline](ctx, client, "teams", team, "pipelines")
+type Resource struct {
+	Name         string `json:"name"`
+	Type         string `json:"type"`
+	PipelineID   int    `json:"pipeline_id"`
+	PipelineName string `json:"pipeline_name"`
+	TeamName     string `json:"team_name"`
+	LastChecked  int    `json:"last_checked"`
+	Build        struct {
+		Id           int    `json:"id"`
+		Name         string `json:"name"`
+		Status       string `json:"status"`
+		StartTime    int    `json:"start_time"`
+		EndTime      int    `json:"end_time"`
+		TeamName     string `json:"team_name"`
+		PipelineId   int    `json:"pipeline_id"`
+		PipelineName string `json:"pipeline_name"`
+		Plan         struct {
+			ID    string `json:"id"`
+			Check struct {
+				Name string `json:"name"`
+				Type string `json:"type"`
+			} `json:"check"`
+		} `json:"plan"`
+	} `json:"build"`
 }
 
 type Job struct {
@@ -136,6 +154,12 @@ type Job struct {
 	HasNewInputs    bool     `json:"has_new_inputs"`
 }
 
+type BuildInput struct {
+	Name     string `json:"name"`
+	Resource string `json:"resource"`
+	Trigger  bool   `json:"trigger"`
+}
+
 type Build struct {
 	ID           int          `json:"id"`
 	Name         string       `json:"name"`
@@ -148,25 +172,31 @@ type Build struct {
 	JobName      string       `json:"job_name"`
 	Inputs       []BuildInput `bson:"inputs"`
 	URL          string       `json:"api_url"`
+	CreatedBy    string       `json:"created_by,omitempty"`
 }
 
-type BuildInput struct {
-	Name     string `json:"name"`
-	Resource string `json:"resource"`
-	Trigger  bool   `json:"trigger"`
+func (client *Client) Teams(ctx context.Context) ([]Team, error) {
+	return listResource[Team](ctx, client, "teams")
+}
+
+func (client *Client) Pipelines(ctx context.Context, team string) ([]Pipeline, error) {
+	return listResource[Pipeline](ctx, client, "teams", team, "pipelines")
+}
+
+func (client *Client) Resources(ctx context.Context, team, pipeline string) ([]Resource, error) {
+	return listResource[Resource](ctx, client, "teams", team, "pipelines", pipeline, "resources")
+}
+
+func (client *Client) ResourceVersions(ctx context.Context, team, pipeline, resource string) ([]json.RawMessage, error) {
+	return listResource[json.RawMessage](ctx, client, "teams", team, "pipelines", pipeline, "resources", resource, "versions")
 }
 
 func (client *Client) Jobs(ctx context.Context, team, pipeline string) ([]Job, error) {
 	return listResource[Job](ctx, client, "teams", team, "pipelines", pipeline, "jobs")
 }
 
-type httpError struct {
-	StatusCode int
-	Body       []byte
-}
-
-func (err *httpError) Error() string {
-	return fmt.Sprintf("http error: %d: %s", err.StatusCode, err.Body)
+func (client *Client) JobBuilds(ctx context.Context, team, pipeline, job string) ([]Build, error) {
+	return listResource[Build](ctx, client, "teams", team, "pipelines", pipeline, "jobs", job, "builds")
 }
 
 func listResource[T any](ctx context.Context, client *Client, segments ...string) ([]T, error) {
@@ -188,4 +218,13 @@ func listResource[T any](ctx context.Context, client *Client, segments ...string
 	}
 	var result []T
 	return result, json.Unmarshal(body, &result)
+}
+
+type httpError struct {
+	StatusCode int
+	Body       []byte
+}
+
+func (err *httpError) Error() string {
+	return fmt.Sprintf("http error: %d: %s", err.StatusCode, err.Body)
 }
