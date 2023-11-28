@@ -196,31 +196,31 @@ type BuildEventData struct {
 }
 
 func (client *Client) Teams(ctx context.Context) ([]Team, error) {
-	return listResource[Team](ctx, client, "teams")
+	return getList[Team](ctx, client, "teams")
 }
 
 func (client *Client) Pipelines(ctx context.Context, team string) ([]Pipeline, error) {
-	return listResource[Pipeline](ctx, client, "teams", team, "pipelines")
+	return getList[Pipeline](ctx, client, "teams", team, "pipelines")
 }
 
 func (client *Client) Resources(ctx context.Context, team, pipeline string) ([]Resource, error) {
-	return listResource[Resource](ctx, client, "teams", team, "pipelines", pipeline, "resources")
+	return getList[Resource](ctx, client, "teams", team, "pipelines", pipeline, "resources")
 }
 
 func (client *Client) ResourceVersions(ctx context.Context, team, pipeline, resource string) ([]ResourceVersion, error) {
-	return listResource[ResourceVersion](ctx, client, "teams", team, "pipelines", pipeline, "resources", resource, "versions")
+	return getList[ResourceVersion](ctx, client, "teams", team, "pipelines", pipeline, "resources", resource, "versions")
 }
 
 func (client *Client) Jobs(ctx context.Context, team, pipeline string) ([]Job, error) {
-	return listResource[Job](ctx, client, "teams", team, "pipelines", pipeline, "jobs")
+	return getList[Job](ctx, client, "teams", team, "pipelines", pipeline, "jobs")
 }
 
 func (client *Client) JobBuilds(ctx context.Context, team, pipeline, job string) ([]Build, error) {
-	return listResource[Build](ctx, client, "teams", team, "pipelines", pipeline, "jobs", job, "builds")
+	return getList[Build](ctx, client, "teams", team, "pipelines", pipeline, "jobs", job, "builds")
 }
 
 func (client *Client) JobBuildsWithResourceVersion(ctx context.Context, team, pipeline, resource string, versionID int) ([]Build, error) {
-	return listResource[Build](ctx, client, "teams", team, "pipelines", pipeline, "resources", resource, "versions", strconv.Itoa(versionID), "input_to")
+	return getList[Build](ctx, client, "teams", team, "pipelines", pipeline, "resources", resource, "versions", strconv.Itoa(versionID), "input_to")
 }
 
 func (client *Client) BuildEvents(ctx context.Context, buildID int) (<-chan BuildEvent, error) {
@@ -260,7 +260,7 @@ func sendBuildEvents(ctx context.Context, c chan<- BuildEvent, rc *sse.ReadClose
 	}
 }
 
-func listResource[T any](ctx context.Context, client *Client, segments ...string) ([]T, error) {
+func getList[T any](ctx context.Context, client *Client, segments ...string) ([]T, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, client.APIPath(segments...), nil)
 	if err != nil {
 		return nil, err
