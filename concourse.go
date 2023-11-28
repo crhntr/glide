@@ -175,6 +175,14 @@ type Build struct {
 	CreatedBy    string       `json:"created_by,omitempty"`
 }
 
+const (
+	BuildStatusUnstarted = "unstarted"
+	BuildStatusStarted   = "started"
+	BuildStatusSucceeded = "succeeded"
+	BuildStatusFailed    = "failed"
+	BuildStatusErrored   = "errored"
+)
+
 func (client *Client) Teams(ctx context.Context) ([]Team, error) {
 	return getListEndpoint[Team](ctx, client, "teams")
 }
