@@ -176,30 +176,30 @@ type Build struct {
 }
 
 func (client *Client) Teams(ctx context.Context) ([]Team, error) {
-	return listResource[Team](ctx, client, "teams")
+	return getListEndpoint[Team](ctx, client, "teams")
 }
 
 func (client *Client) Pipelines(ctx context.Context, team string) ([]Pipeline, error) {
-	return listResource[Pipeline](ctx, client, "teams", team, "pipelines")
+	return getListEndpoint[Pipeline](ctx, client, "teams", team, "pipelines")
 }
 
 func (client *Client) Resources(ctx context.Context, team, pipeline string) ([]Resource, error) {
-	return listResource[Resource](ctx, client, "teams", team, "pipelines", pipeline, "resources")
+	return getListEndpoint[Resource](ctx, client, "teams", team, "pipelines", pipeline, "resources")
 }
 
 func (client *Client) ResourceVersions(ctx context.Context, team, pipeline, resource string) ([]json.RawMessage, error) {
-	return listResource[json.RawMessage](ctx, client, "teams", team, "pipelines", pipeline, "resources", resource, "versions")
+	return getListEndpoint[json.RawMessage](ctx, client, "teams", team, "pipelines", pipeline, "resources", resource, "versions")
 }
 
 func (client *Client) Jobs(ctx context.Context, team, pipeline string) ([]Job, error) {
-	return listResource[Job](ctx, client, "teams", team, "pipelines", pipeline, "jobs")
+	return getListEndpoint[Job](ctx, client, "teams", team, "pipelines", pipeline, "jobs")
 }
 
 func (client *Client) JobBuilds(ctx context.Context, team, pipeline, job string) ([]Build, error) {
-	return listResource[Build](ctx, client, "teams", team, "pipelines", pipeline, "jobs", job, "builds")
+	return getListEndpoint[Build](ctx, client, "teams", team, "pipelines", pipeline, "jobs", job, "builds")
 }
 
-func listResource[T any](ctx context.Context, client *Client, segments ...string) ([]T, error) {
+func getListEndpoint[T any](ctx context.Context, client *Client, segments ...string) ([]T, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, client.APIPath(segments...), nil)
 	if err != nil {
 		return nil, err
