@@ -8,10 +8,12 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/vito/go-sse/sse"
 	"golang.org/x/oauth2"
 )
 
@@ -175,39 +177,90 @@ type Build struct {
 	CreatedBy    string       `json:"created_by,omitempty"`
 }
 
-const (
-	BuildStatusUnstarted = "unstarted"
-	BuildStatusStarted   = "started"
-	BuildStatusSucceeded = "succeeded"
-	BuildStatusFailed    = "failed"
-	BuildStatusErrored   = "errored"
-)
+type ResourceVersion struct {
+	ID      int             `json:"id"`
+	Version json.RawMessage `json:"version"`
+	Enabled bool            `json:"enabled"`
+}
+
+type BuildEvent struct {
+	Data  BuildEventData `json:"data"`
+	Event string         `json:"event"`
+}
+
+type BuildEventData struct {
+	Payload string          `json:"payload"`
+	Time    int64           `json:"time"`
+	Origin  json.RawMessage `json:"origin"`
+	Message string          `json:"message"`
+}
 
 func (client *Client) Teams(ctx context.Context) ([]Team, error) {
-	return getListEndpoint[Team](ctx, client, "teams")
+	return listResource[Team](ctx, client, "teams")
 }
 
 func (client *Client) Pipelines(ctx context.Context, team string) ([]Pipeline, error) {
-	return getListEndpoint[Pipeline](ctx, client, "teams", team, "pipelines")
+	return listResource[Pipeline](ctx, client, "teams", team, "pipelines")
 }
 
 func (client *Client) Resources(ctx context.Context, team, pipeline string) ([]Resource, error) {
-	return getListEndpoint[Resource](ctx, client, "teams", team, "pipelines", pipeline, "resources")
+	return listResource[Resource](ctx, client, "teams", team, "pipelines", pipeline, "resources")
 }
 
-func (client *Client) ResourceVersions(ctx context.Context, team, pipeline, resource string) ([]json.RawMessage, error) {
-	return getListEndpoint[json.RawMessage](ctx, client, "teams", team, "pipelines", pipeline, "resources", resource, "versions")
+func (client *Client) ResourceVersions(ctx context.Context, team, pipeline, resource string) ([]ResourceVersion, error) {
+	return listResource[ResourceVersion](ctx, client, "teams", team, "pipelines", pipeline, "resources", resource, "versions")
 }
 
 func (client *Client) Jobs(ctx context.Context, team, pipeline string) ([]Job, error) {
-	return getListEndpoint[Job](ctx, client, "teams", team, "pipelines", pipeline, "jobs")
+	return listResource[Job](ctx, client, "teams", team, "pipelines", pipeline, "jobs")
 }
 
 func (client *Client) JobBuilds(ctx context.Context, team, pipeline, job string) ([]Build, error) {
-	return getListEndpoint[Build](ctx, client, "teams", team, "pipelines", pipeline, "jobs", job, "builds")
+	return listResource[Build](ctx, client, "teams", team, "pipelines", pipeline, "jobs", job, "builds")
 }
 
-func getListEndpoint[T any](ctx context.Context, client *Client, segments ...string) ([]T, error) {
+func (client *Client) JobBuildsWithResourceVersion(ctx context.Context, team, pipeline, resource string, versionID int) ([]Build, error) {
+	return listResource[Build](ctx, client, "teams", team, "pipelines", pipeline, "resources", resource, "versions", strconv.Itoa(versionID), "input_to")
+}
+
+func (client *Client) BuildEvents(ctx context.Context, buildID int) (<-chan BuildEvent, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, client.APIPath("builds", strconv.Itoa(buildID), "events"), nil)
+	if err != nil {
+		return nil, err
+	}
+	res, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	if res.StatusCode != http.StatusOK {
+		return nil, &httpError{StatusCode: res.StatusCode}
+	}
+	rc := sse.NewReadCloser(res.Body)
+	c := make(chan BuildEvent)
+	go sendBuildEvents(ctx, c, rc)
+	return c, nil
+}
+
+func sendBuildEvents(ctx context.Context, c chan<- BuildEvent, rc *sse.ReadCloser) {
+	defer close(c)
+	for {
+		if err := ctx.Err(); err != nil {
+			closeAndIgnoreErr(rc)
+			return
+		}
+		event, err := rc.Next()
+		if err != nil || event.Name == "end" {
+			return
+		}
+		var message BuildEvent
+		if err := json.Unmarshal(event.Data, &message); err != nil {
+			continue
+		}
+		c <- message
+	}
+}
+
+func listResource[T any](ctx context.Context, client *Client, segments ...string) ([]T, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, client.APIPath(segments...), nil)
 	if err != nil {
 		return nil, err
