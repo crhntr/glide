@@ -124,7 +124,7 @@ type Resource struct {
 	TeamName     string `json:"team_name"`
 	LastChecked  int    `json:"last_checked"`
 	Build        struct {
-		Id           int    `json:"id"`
+		ID           int    `json:"id"`
 		Name         string `json:"name"`
 		Status       string `json:"status"`
 		StartTime    int    `json:"start_time"`
