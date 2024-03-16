@@ -1,6 +1,7 @@
 package glide
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -250,6 +251,57 @@ func (client *Client) JobBuilds(ctx context.Context, team, pipeline, job string)
 
 func (client *Client) JobBuildsWithResourceVersion(ctx context.Context, team, pipeline, resource string, versionID int) ([]Build, error) {
 	return getList[Build](ctx, client, "teams", team, "pipelines", pipeline, "resources", resource, "versions", strconv.Itoa(versionID), "input_to")
+}
+
+func (client *Client) PipelineConfiguration(ctx context.Context, team, pipeline string) ([]byte, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, client.APIPath("teams", team, "pipelines", pipeline, "config"), nil)
+	if err != nil {
+		return nil, err
+	}
+	res, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer closeAndIgnoreErr(res.Body)
+	if res.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(res.Body)
+		return nil, &httpError{StatusCode: res.StatusCode, Body: body}
+	}
+	return io.ReadAll(res.Body)
+}
+
+func (client *Client) SetPipelineConfiguration(ctx context.Context, team, pipeline string, configuration []byte) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, client.APIPath("teams", team, "pipelines", pipeline, "config"), bytes.NewReader(configuration))
+	if err != nil {
+		return err
+	}
+	res, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer closeAndIgnoreErr(res.Body)
+	if res.StatusCode >= http.StatusBadRequest {
+		body, _ := io.ReadAll(res.Body)
+		return &httpError{StatusCode: res.StatusCode, Body: body}
+	}
+	return nil
+}
+
+func (client *Client) DestroyPipeline(ctx context.Context, team, pipeline string) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, client.APIPath("teams", team, "pipelines", pipeline), nil)
+	if err != nil {
+		return err
+	}
+	res, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer closeAndIgnoreErr(res.Body)
+	if res.StatusCode >= http.StatusBadRequest {
+		body, _ := io.ReadAll(res.Body)
+		return &httpError{StatusCode: res.StatusCode, Body: body}
+	}
+	return nil
 }
 
 func (client *Client) BuildEvents(ctx context.Context, buildID int) (<-chan BuildEvent, error) {
