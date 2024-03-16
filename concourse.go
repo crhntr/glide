@@ -196,19 +196,11 @@ type BuildEventData struct {
 }
 
 type Info struct {
-	Version       string `json:"version"`
-	WorkerVersion string `json:"worker_version"`
-	FeatureFlags  struct {
-		AcrossStep           bool `json:"across_step"`
-		BuildRerun           bool `json:"build_rerun"`
-		CacheStreamedVolumes bool `json:"cache_streamed_volumes"`
-		GlobalResources      bool `json:"global_resources"`
-		PipelineInstances    bool `json:"pipeline_instances"`
-		RedactSecrets        bool `json:"redact_secrets"`
-		ResourceCausality    bool `json:"resource_causality"`
-	} `json:"feature_flags"`
-	ExternalURL string `json:"external_url"`
-	ClusterName string `json:"cluster_name"`
+	Version       string          `json:"version"`
+	WorkerVersion string          `json:"worker_version"`
+	FeatureFlags  map[string]bool `json:"feature_flags"`
+	ExternalURL   string          `json:"external_url"`
+	ClusterName   string          `json:"cluster_name"`
 }
 
 func (client *Client) Info(ctx context.Context) (Info, error) {
