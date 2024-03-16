@@ -275,6 +275,7 @@ func (client *Client) SetPipelineConfiguration(ctx context.Context, team, pipeli
 	if err != nil {
 		return err
 	}
+	req.Header.Set("content-type", "application/x-yaml")
 	res, err := client.Do(req)
 	if err != nil {
 		return err
