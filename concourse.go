@@ -195,6 +195,43 @@ type BuildEventData struct {
 	Message string          `json:"message"`
 }
 
+type Info struct {
+	Version       string `json:"version"`
+	WorkerVersion string `json:"worker_version"`
+	FeatureFlags  struct {
+		AcrossStep           bool `json:"across_step"`
+		BuildRerun           bool `json:"build_rerun"`
+		CacheStreamedVolumes bool `json:"cache_streamed_volumes"`
+		GlobalResources      bool `json:"global_resources"`
+		PipelineInstances    bool `json:"pipeline_instances"`
+		RedactSecrets        bool `json:"redact_secrets"`
+		ResourceCausality    bool `json:"resource_causality"`
+	} `json:"feature_flags"`
+	ExternalURL string `json:"external_url"`
+	ClusterName string `json:"cluster_name"`
+}
+
+func (client *Client) Info(ctx context.Context) (Info, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, client.APIPath("info"), nil)
+	if err != nil {
+		return Info{}, err
+	}
+	res, err := client.Do(req)
+	if err != nil {
+		return Info{}, err
+	}
+	defer closeAndIgnoreErr(res.Body)
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return Info{}, err
+	}
+	if res.StatusCode != http.StatusOK {
+		return Info{}, &httpError{StatusCode: res.StatusCode, Body: body}
+	}
+	var info Info
+	return info, json.Unmarshal(body, &info)
+}
+
 func (client *Client) Teams(ctx context.Context) ([]Team, error) {
 	return getList[Team](ctx, client, "teams")
 }
