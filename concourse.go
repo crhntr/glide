@@ -1,4 +1,4 @@
-package globalentry
+package glide
 
 import (
 	"context"

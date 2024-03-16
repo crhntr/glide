@@ -1,4 +1,4 @@
-module github.com/crhntr/globalentry
+module github.com/crhntr/glide
 
 go 1.21
 

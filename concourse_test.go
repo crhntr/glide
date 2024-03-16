@@ -1,15 +1,15 @@
-package globalentry_test
+package glide_test
 
 import (
 	"context"
 	"fmt"
 	"log"
 
-	"github.com/crhntr/globalentry"
+	"github.com/crhntr/glide"
 )
 
 func Example() {
-	concourse := globalentry.Client{}
+	concourse := glide.Client{}
 	ctx := context.Background()
 	const teamName = "main"
 	teams, err := concourse.Teams(ctx)
